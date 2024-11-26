@@ -23,25 +23,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Set up the environment
-      env:
-        JIRA_URL: ${{ secrets.JIRA_URL }}
-        JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
-        JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-
     - name: Fetch Jira issue labels
       id: fetch_labels
       run: |
         ISSUE_KEY="${{ github.event.inputs.issue_key }}"
-        RESPONSE=$(curl -s -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+        RESPONSE=$(curl -s -u "${{ secrets.JIRA_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
           -H "Content-Type: application/json" \
-          "$JIRA_URL/rest/api/3/issue/$ISSUE_KEY")
-        echo "Labels: $(echo $RESPONSE | jq '.fields.labels')" > labels.json
-        echo "::set-output name=labels::$(echo $RESPONSE | jq -r '.fields.labels | join(",")')"
-      env:
-        JIRA_URL: ${{ secrets.JIRA_URL }}
-        JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
-        JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          "${{ secrets.JIRA_URL }}/rest/api/3/issue/$ISSUE_KEY")
+        
+        LABELS=$(echo "$RESPONSE" | jq -r '.fields.labels | join(",")')
+        
+        if [ -z "$LABELS" ]; then
+          echo "No labels found for issue $ISSUE_KEY."
+          exit 1
+        fi
+        
+        echo "::set-output name=labels::$LABELS"
 
     - name: Display labels
       run: |
